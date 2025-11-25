@@ -48,7 +48,7 @@ fn generate_zkvm_sdk_version_impl() {
     let sp1_cluster_version = &sp1_version;
 
     let zkvm_sdk_version_impl = format!(
-        r#"impl crate::ErezkVM {{
+        r#"impl crate::zkVMKind {{
     pub fn sdk_version(&self) -> &'static str {{
         match self {{
             Self::Airbender => "{airbender_version}",
