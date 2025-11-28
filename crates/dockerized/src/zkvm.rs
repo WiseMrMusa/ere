@@ -528,7 +528,7 @@ mod test {
             Zisk,
             RustCustomized,
             "basic_rust",
-            [BasicProgramInput::valid().into_output_sha256()],
+            [BasicProgramInput::valid()],
             [Vec::new(), BasicProgramInput::invalid().serialized_input()]
         );
     }
