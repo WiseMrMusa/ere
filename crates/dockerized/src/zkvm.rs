@@ -386,7 +386,9 @@ mod test {
         zkVMKind,
         zkvm::{DockerizedzkVM, Error},
     };
-    use ere_test_utils::{host::*, program::basic::BasicProgramInput};
+    use ere_test_utils::{
+        host::*, io::serde::bincode::BincodeLegacy, program::basic::BasicProgram,
+    };
     use ere_zkvm_interface::zkvm::{ProofKind, ProverResourceType, zkVM};
 
     fn zkvm(
@@ -440,8 +442,11 @@ mod test {
             Airbender,
             Rust,
             "basic",
-            [BasicProgramInput::valid().into_output_sha256()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case().into_output_sha256()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -451,8 +456,11 @@ mod test {
             Jolt,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -462,8 +470,11 @@ mod test {
             Nexus,
             Rust,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -473,8 +484,11 @@ mod test {
             OpenVM,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid().into_output_sha256()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case().into_output_sha256()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -484,8 +498,11 @@ mod test {
             Pico,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -495,8 +512,11 @@ mod test {
             Risc0,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -506,8 +526,11 @@ mod test {
             SP1,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -517,8 +540,11 @@ mod test {
             Ziren,
             RustCustomized,
             "basic",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
@@ -528,8 +554,11 @@ mod test {
             Zisk,
             RustCustomized,
             "basic_rust",
-            [BasicProgramInput::valid()],
-            [Vec::new(), BasicProgramInput::invalid().serialized_input()]
+            [BasicProgram::<BincodeLegacy>::valid_test_case()],
+            [
+                Vec::new(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+            ]
         );
     }
 
