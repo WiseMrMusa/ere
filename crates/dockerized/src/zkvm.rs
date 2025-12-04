@@ -16,7 +16,7 @@ use ere_server::client::{Url, zkVMClient};
 use ere_zkvm_interface::{
     CommonError,
     zkvm::{
-        ProgramExecutionReport, ProgramProvingReport, Proof, ProofKind, ProverResourceType,
+        Input, ProgramExecutionReport, ProgramProvingReport, Proof, ProofKind, ProverResourceType,
         PublicValues, zkVM,
     },
 };
@@ -343,23 +343,20 @@ impl DockerizedzkVM {
 }
 
 impl zkVM for DockerizedzkVM {
-    fn execute(&self, input: &[u8]) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
-        let input = input.to_vec();
-        self.with_retry(|client| block_on(client.execute(input.clone())))
+    fn execute(&self, input: &Input) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
+        self.with_retry(|client| block_on(client.execute(input)))
     }
 
     fn prove(
         &self,
-        input: &[u8],
+        input: &Input,
         proof_kind: ProofKind,
     ) -> anyhow::Result<(PublicValues, Proof, ProgramProvingReport)> {
-        let input = input.to_vec();
-        self.with_retry(|client| block_on(client.prove(input.clone(), proof_kind)))
+        self.with_retry(|client| block_on(client.prove(input, proof_kind)))
     }
 
     fn verify(&self, proof: &Proof) -> anyhow::Result<PublicValues> {
-        let proof = proof.clone();
-        self.with_retry(|client| block_on(client.verify(&proof)))
+        self.with_retry(|client| block_on(client.verify(proof)))
     }
 
     fn name(&self) -> &'static str {
@@ -389,7 +386,7 @@ mod test {
     use ere_test_utils::{
         host::*, io::serde::bincode::BincodeLegacy, program::basic::BasicProgram,
     };
-    use ere_zkvm_interface::zkvm::{ProofKind, ProverResourceType, zkVM};
+    use ere_zkvm_interface::zkvm::{Input, ProofKind, ProverResourceType, zkVM};
 
     fn zkvm(
         zkvm_kind: zkVMKind,
@@ -444,8 +441,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case().into_output_sha256()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -458,8 +455,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -472,8 +469,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -486,8 +483,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case().into_output_sha256()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -500,8 +497,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -514,8 +511,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -528,8 +525,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -542,8 +539,8 @@ mod test {
             "basic",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }
@@ -556,8 +553,8 @@ mod test {
             "basic_rust",
             [BasicProgram::<BincodeLegacy>::valid_test_case()],
             [
-                Vec::new(),
-                BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input()
+                Input::default(),
+                BasicProgram::<BincodeLegacy>::invalid_test_case().input()
             ]
         );
     }

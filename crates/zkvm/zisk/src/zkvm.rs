@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::bail;
 use ere_zkvm_interface::zkvm::{
-    CommonError, ProgramExecutionReport, ProgramProvingReport, Proof, ProofKind,
+    CommonError, Input, ProgramExecutionReport, ProgramProvingReport, Proof, ProofKind,
     ProverResourceType, PublicValues, zkVM, zkVMProgramDigest,
 };
 use std::{
@@ -73,9 +73,13 @@ impl EreZisk {
 }
 
 impl zkVM for EreZisk {
-    fn execute(&self, input: &[u8]) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
+    fn execute(&self, input: &Input) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
+        if input.proofs.is_some() {
+            bail!(CommonError::unsupported_input("no dedicated proofs stream"))
+        }
+
         let start = Instant::now();
-        let (public_values, total_num_cycles) = self.sdk.execute(input)?;
+        let (public_values, total_num_cycles) = self.sdk.execute(input.stdin())?;
         let execution_duration = start.elapsed();
 
         Ok((
@@ -90,9 +94,12 @@ impl zkVM for EreZisk {
 
     fn prove(
         &self,
-        input: &[u8],
+        input: &Input,
         proof_kind: ProofKind,
     ) -> anyhow::Result<(PublicValues, Proof, ProgramProvingReport)> {
+        if input.proofs.is_some() {
+            bail!(CommonError::unsupported_input("no dedicated proofs stream"))
+        }
         if proof_kind != ProofKind::Compressed {
             bail!(CommonError::unsupported_proof_kind(
                 proof_kind,
@@ -104,7 +111,7 @@ impl zkVM for EreZisk {
         let server = server.as_mut().expect("server initialized");
 
         let start = Instant::now();
-        let (public_values, proof) = server.prove(input)?;
+        let (public_values, proof) = server.prove(input.stdin())?;
         let proving_time = start.elapsed();
 
         Ok((
@@ -152,7 +159,7 @@ mod tests {
     };
     use ere_zkvm_interface::{
         compiler::Compiler,
-        zkvm::{ProofKind, ProverResourceType, zkVM},
+        zkvm::{Input, ProofKind, ProverResourceType, zkVM},
     };
     use std::sync::{Mutex, OnceLock};
 
@@ -186,8 +193,8 @@ mod tests {
         let zkvm = EreZisk::new(program, ProverResourceType::Cpu).unwrap();
 
         for input in [
-            Vec::new(),
-            BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input(),
+            Input::default(),
+            BasicProgram::<BincodeLegacy>::invalid_test_case().input(),
         ] {
             zkvm.execute(&input).unwrap_err();
         }
@@ -212,8 +219,8 @@ mod tests {
         let _guard = PROVE_LOCK.lock().unwrap();
 
         for input in [
-            Vec::new(),
-            BasicProgram::<BincodeLegacy>::invalid_test_case().serialized_input(),
+            Input::default(),
+            BasicProgram::<BincodeLegacy>::invalid_test_case().input(),
         ] {
             zkvm.prove(&input, ProofKind::default()).unwrap_err();
         }
