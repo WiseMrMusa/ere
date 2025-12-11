@@ -4063,7 +4063,7 @@ dependencies = [
 
 [[package]]
 name = "ere-platform-sp1-cluster"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "ere-platform-sp1",
 ]
@@ -4163,7 +4163,7 @@ dependencies = [
 
 [[package]]
 name = "ere-sp1-cluster"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "anyhow",
  "bincode 1.3.3",
@@ -4234,6 +4234,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.12",
  "tracing",
+ "wait-timeout",
 ]
 
 [[package]]
