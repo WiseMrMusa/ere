@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 /// Configuration for network-based proving
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct NetworkProverConfig {
     #[cfg_attr(feature = "clap", arg(long))]
@@ -77,7 +78,8 @@ impl ClusterProverConfig {
 }
 
 /// ResourceType specifies what resource will be used to create the proofs.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 #[cfg_attr(feature = "clap", derive(clap::Subcommand))]
 pub enum ProverResourceType {
     #[default]
