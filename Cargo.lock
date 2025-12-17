@@ -3851,6 +3851,7 @@ version = "0.0.15"
 dependencies = [
  "ere-build-utils",
  "serde",
+ "strum 0.27.2",
 ]
 
 [[package]]
