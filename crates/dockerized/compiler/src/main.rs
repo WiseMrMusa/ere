@@ -159,10 +159,16 @@ fn compile(guest_path: PathBuf, compiler_kind: CompilerKind) -> Result<impl Seri
 
     // SP1 Cluster uses the same compiler as SP1
     #[cfg(feature = "sp1-cluster")]
-    let result = if use_stock_rust() {
-        ere_sp1_cluster::compiler::RustRv32ima.compile(&guest_path)
-    } else {
-        ere_sp1_cluster::compiler::RustRv32imaCustomized.compile(&guest_path)
+    let result = {
+        use ere_sp1_cluster::compiler::*;
+        match compiler_kind {
+            CompilerKind::Rust => RustRv32ima.compile(&guest_path),
+            CompilerKind::RustCustomized => RustRv32imaCustomized.compile(&guest_path),
+            _ => bail!(unsupported_compiler_kind_err(
+                compiler_kind,
+                [CompilerKind::Rust, CompilerKind::RustCustomized]
+            )),
+        }
     };
 
     #[cfg(feature = "ziren")]
