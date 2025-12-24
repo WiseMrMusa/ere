@@ -1,0 +1,69 @@
+# SP1 Cluster compiler - uses the same compiler as SP1 since programs are identical
+
+ARG BASE_ZKVM_IMAGE=ere-base-sp1-cluster:latest
+ARG RUNTIME_IMAGE=ubuntu:24.04
+ARG CACHE_BUST=1
+
+FROM $BASE_ZKVM_IMAGE AS build_stage
+
+# Verify proto files are present (forces cache invalidation if files change)
+RUN echo "Cache bust: $CACHE_BUST"
+
+COPY . /ere
+
+WORKDIR /ere
+
+# Verify proto files are present (debugging)
+RUN ls -la crates/zkvm/sp1-cluster/proto/ && \
+    ls -la crates/zkvm/sp1-cluster/proto/google/protobuf/ 2>/dev/null || echo "empty.proto not found, will download"
+
+# Install libprotobuf-dev and download well-known types for proto compilation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libprotobuf-dev \
+    curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Download google/protobuf/empty.proto if not already present
+RUN mkdir -p /ere/crates/zkvm/sp1-cluster/proto/google/protobuf && \
+    (test -f /ere/crates/zkvm/sp1-cluster/proto/google/protobuf/empty.proto || \
+     curl -s https://raw.githubusercontent.com/protocolbuffers/protobuf/main/src/google/protobuf/empty.proto \
+     -o /ere/crates/zkvm/sp1-cluster/proto/google/protobuf/empty.proto)
+
+RUN cargo build --release --package ere-compiler --bin ere-compiler --features sp1-cluster \
+    && mkdir bin && mv target/release/ere-compiler bin/ere-compiler \
+    && cargo clean && rm -rf $CARGO_HOME/registry/src $CARGO_HOME/registry/cache
+
+FROM $RUNTIME_IMAGE AS runtime_stage
+
+# Install common dependencies and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    clang \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy Rust
+COPY --from=build_stage /usr/local/cargo /usr/local/cargo
+COPY --from=build_stage /usr/local/rustup /usr/local/rustup
+
+# Add Rust to path
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+# Copy SP1 SDK
+COPY --from=build_stage /root/.sp1 /root/.sp1
+
+# Add SP1 SDK to path
+ENV PATH=/root/.sp1/bin:$PATH
+
+# Copy ere workspace (needed for dependency resolution)
+COPY --from=build_stage /ere /ere
+
+# Copy ere-compiler
+COPY --from=build_stage /ere/bin/ere-compiler /ere/bin/ere-compiler
+
+WORKDIR /ere
+
+ENTRYPOINT ["/ere/bin/ere-compiler"]

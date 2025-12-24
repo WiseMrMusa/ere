@@ -1,0 +1,21 @@
+[package]
+name = "ere-platform-sp1-cluster"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# SP1 Cluster uses the same platform as SP1
+ere-platform-sp1.workspace = true
+
+[features]
+default = ["lib", "libm"]
+blake3 = ["ere-platform-sp1/blake3"]
+embedded = ["ere-platform-sp1/embedded"]
+lib = ["ere-platform-sp1/lib"]
+libm = ["ere-platform-sp1/libm"]
+verify = ["ere-platform-sp1/verify"]
+
+[lints]
+workspace = true

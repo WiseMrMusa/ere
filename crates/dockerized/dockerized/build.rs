@@ -44,6 +44,9 @@ fn generate_zkvm_sdk_version_impl() {
     ]
     .map(detect_sdk_version);
 
+    // SP1Cluster uses the same SDK version as SP1
+    let sp1_cluster_version = &sp1_version;
+
     let zkvm_sdk_version_impl = format!(
         r#"impl crate::ErezkVM {{
     pub fn sdk_version(&self) -> &'static str {{
@@ -56,6 +59,7 @@ fn generate_zkvm_sdk_version_impl() {
             Self::Pico => "{pico_version}",
             Self::Risc0 => "{risc0_version}",
             Self::SP1 => "{sp1_version}",
+            Self::SP1Cluster => "{sp1_cluster_version}",
             Self::Ziren => "{ziren_version}",
             Self::Zisk => "{zisk_version}",
         }}

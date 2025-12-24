@@ -99,7 +99,28 @@ impl<T: 'static + zkVM + Send + Sync> ZkvmService for zkVMServer<T> {
                 report: bincode::serde::encode_to_vec(&report, bincode::config::legacy())
                     .map_err(serialize_report_err)?,
             }),
-            Err(err) => ProveResult::Err(err.to_string()),
+            Err(err) => {
+                // #region agent log
+                let log_path = "/root/sp1-cluster/.cursor/debug.log";
+                let error_str = err.to_string();
+                let error_debug = format!("{:?}", err);
+                let error_chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+                eprintln!("[SERVER-ERROR] Prove error: {}", error_str);
+                eprintln!("[SERVER-ERROR] Error debug: {}", error_debug);
+                eprintln!("[SERVER-ERROR] Error chain: {:?}", error_chain);
+                if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(log_path) {
+                    use std::io::Write;
+                    let _ = writeln!(file, "{{\"location\":\"server.rs:102\",\"message\":\"Prove error in server\",\"data\":{{\"error_str\":\"{}\",\"error_debug\":\"{}\",\"error_chain\":{:?},\"error_str_len\":{}}},\"timestamp\":{},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"F\"}}", error_str.replace("\"", "\\\"").replace("\n", "\\n"), error_debug.replace("\"", "\\\"").replace("\n", "\\n"), error_chain, error_str.len(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis());
+                }
+                // #endregion
+                // Use the full error chain to preserve all error details
+                let full_error = if error_chain.len() > 1 {
+                    error_chain.join(": ")
+                } else {
+                    error_str
+                };
+                ProveResult::Err(full_error)
+            }
         };
 
         Ok(Response::new(ProveResponse {

@@ -16,6 +16,7 @@ const _: () = {
             + cfg!(feature = "pico") as u8
             + cfg!(feature = "risc0") as u8
             + cfg!(feature = "sp1") as u8
+            + cfg!(feature = "sp1-cluster") as u8
             + cfg!(feature = "ziren") as u8
             + cfg!(feature = "zisk") as u8)
             == 1,
@@ -93,6 +94,14 @@ fn compile(guest_path: PathBuf) -> Result<impl Serialize, Error> {
         ere_sp1::compiler::RustRv32ima.compile(&guest_path)
     } else {
         ere_sp1::compiler::RustRv32imaCustomized.compile(&guest_path)
+    };
+
+    // SP1 Cluster uses the same compiler as SP1
+    #[cfg(feature = "sp1-cluster")]
+    let result = if use_stock_rust() {
+        ere_sp1_cluster::compiler::RustRv32ima.compile(&guest_path)
+    } else {
+        ere_sp1_cluster::compiler::RustRv32imaCustomized.compile(&guest_path)
     };
 
     #[cfg(feature = "ziren")]

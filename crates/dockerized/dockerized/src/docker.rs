@@ -160,12 +160,12 @@ impl DockerRunCmd {
         self.option("name", name)
     }
 
-    /// Inherit environment variable `key` if it's set and valid.
+    /// Inherit environment variable `key` if it's set and valid (not empty).
     pub fn inherit_env(self, key: impl AsRef<str>) -> Self {
         let key = key.as_ref();
         match env::var(key) {
-            Ok(val) => self.env(key, val),
-            Err(_) => self,
+            Ok(val) if !val.is_empty() => self.env(key, val),
+            _ => self,
         }
     }
 
@@ -182,13 +182,24 @@ impl DockerRunCmd {
 
         let mut cmd = Command::new("docker");
         cmd.arg("run");
-        for option in self.options {
-            cmd.args(option.to_args());
+        let mut cmd_str = String::from("docker run");
+        eprintln!("[DOCKER-SPAWN] Building docker run command with {} options", self.options.len());
+        for (i, option) in self.options.iter().enumerate() {
+            let args = option.to_args();
+            eprintln!("[DOCKER-SPAWN] Option {}: {:?}", i, args);
+            cmd_str.push_str(&format!(" {:?}", args.join(" ")));
+            cmd.args(args);
         }
-        cmd.arg(self.image);
+        eprintln!("[DOCKER-SPAWN] Image: {}", self.image);
+        cmd_str.push_str(&format!(" {}", self.image));
+        cmd.arg(&self.image);
         for command in commands {
-            cmd.arg(command.as_ref());
+            let cmd_str_val = command.as_ref();
+            eprintln!("[DOCKER-SPAWN] Command arg: {}", cmd_str_val);
+            cmd_str.push_str(&format!(" {}", cmd_str_val));
+            cmd.arg(cmd_str_val);
         }
+        eprintln!("[DOCKER-SPAWN] Full command: {}", cmd_str);
 
         let mut child = cmd.stdin(Stdio::piped()).spawn()?;
 
@@ -201,19 +212,31 @@ impl DockerRunCmd {
     pub fn exec(self, commands: impl IntoIterator<Item: AsRef<str>>) -> Result<(), io::Error> {
         let mut cmd = Command::new("docker");
         cmd.arg("run");
-        for option in self.options {
-            cmd.args(option.to_args());
+        let mut cmd_str = String::from("docker run");
+        eprintln!("[DOCKER-RUN] Building docker run command with {} options", self.options.len());
+        for (i, option) in self.options.iter().enumerate() {
+            let args = option.to_args();
+            eprintln!("[DOCKER-RUN] Option {}: {:?}", i, args);
+            cmd_str.push_str(&format!(" {:?}", args.join(" ")));
+            cmd.args(args);
         }
-        cmd.arg(self.image);
+        eprintln!("[DOCKER-RUN] Image: {}", self.image);
+        cmd_str.push_str(&format!(" {}", self.image));
+        cmd.arg(&self.image);
         for command in commands {
-            cmd.arg(command.as_ref());
+            let cmd_str_val = command.as_ref();
+            eprintln!("[DOCKER-RUN] Command arg: {}", cmd_str_val);
+            cmd_str.push_str(&format!(" {}", cmd_str_val));
+            cmd.arg(cmd_str_val);
         }
+        eprintln!("[DOCKER-RUN] Full command: {}", cmd_str);
 
         let status = cmd.status()?;
 
         if !status.success() {
             return Err(io::Error::other(format!(
-                "Command {cmd:?} failed with status: {status}",
+                "Command {} failed with status: {status}",
+                cmd_str
             )));
         }
 

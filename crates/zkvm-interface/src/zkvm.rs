@@ -10,7 +10,7 @@ mod resource;
 pub use error::CommonError;
 pub use proof::{Proof, ProofKind};
 pub use report::{ProgramExecutionReport, ProgramProvingReport};
-pub use resource::{NetworkProverConfig, ProverResourceType};
+pub use resource::{ClusterProverConfig, NetworkProverConfig, ProverResourceType};
 
 /// Public values committed/revealed by guest program.
 ///

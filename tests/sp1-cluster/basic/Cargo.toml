@@ -1,0 +1,11 @@
+[package]
+name = "ere-test-sp1-cluster-guest"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+# SP1 Cluster uses the same platform as SP1
+ere-platform-sp1-cluster = { path = "../../../crates/zkvm/sp1-cluster/platform" }
+ere-test-utils = { path = "../../../crates/test-utils" }

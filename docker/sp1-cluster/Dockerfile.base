@@ -1,0 +1,41 @@
+# SP1 Cluster uses the same base image as SP1 since they share the same program format
+# The cluster functionality is in the server, not in the SDK installation
+
+ARG BASE_IMAGE=ere-base:latest
+
+FROM $BASE_IMAGE
+
+ARG USERNAME=ere_user
+
+# Install libprotobuf-dev for proto well-known types (needed for gRPC compilation)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libprotobuf-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy the SP1 SDK installer script (same as SP1)
+COPY --chmod=755 scripts/sdk_installers/install_sp1_sdk.sh /tmp/install_sp1_sdk.sh
+
+# Define where SP1 SDK will be installed within the image.
+# The install_sp1_sdk.sh script will respect these ENV variables.
+ENV SP1_DIR="/root/.sp1" \
+    SP1_VERSION="v5.2.2"
+
+# Run the SP1 SDK installation script
+# It will use the SP1_DIR and SP1_VERSION defined above.
+RUN /tmp/install_sp1_sdk.sh && rm /tmp/install_sp1_sdk.sh
+
+# Update the image's persistent PATH to include SP1 binaries.
+# This uses the SP1_DIR defined above.
+ENV PATH="${SP1_DIR}/bin:$PATH"
+
+# Verify SP1 installation (optional here, as script does it, but good for sanity)
+RUN cargo prove --version
+
+# SP1 Cluster specific: Add environment variables documentation
+# These should be set at runtime when connecting to a cluster
+ENV SP1_CLUSTER_ENDPOINT="" \
+    SP1_CLUSTER_API_KEY="" \
+    SP1_CLUSTER_NUM_GPUS=""
+
+CMD ["/bin/bash"]

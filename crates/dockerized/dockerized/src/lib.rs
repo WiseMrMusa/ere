@@ -110,6 +110,8 @@ pub enum ErezkVM {
     Pico,
     Risc0,
     SP1,
+    /// SP1 Cluster - Multi-GPU proving service for SP1
+    SP1Cluster,
     Ziren,
     Zisk,
 }
@@ -125,6 +127,7 @@ impl ErezkVM {
             Self::Pico => "pico",
             Self::Risc0 => "risc0",
             Self::SP1 => "sp1",
+            Self::SP1Cluster => "sp1-cluster",
             Self::Ziren => "ziren",
             Self::Zisk => "zisk",
         }
@@ -136,6 +139,7 @@ impl ErezkVM {
             // Only the following zkVMs requires CUDA setup in the base image
             // when GPU support is required.
             (true, Self::Airbender | Self::OpenVM | Self::Risc0 | Self::Zisk) => "-cuda",
+            // SP1Cluster doesn't need local CUDA - it connects to remote cluster
             _ => "",
         };
         format!("{version}{suffix}")
@@ -209,6 +213,7 @@ impl ErezkVM {
                             cmd = cmd.build_arg("CUDA_ARCH", cuda_arch)
                         }
                     }
+                    // SP1Cluster connects to remote cluster, no local CUDA needed
                     _ => {}
                 }
             }
@@ -284,6 +289,41 @@ impl ErezkVM {
                 .inherit_env("ZISK_MAX_STREAMS")
                 .inherit_env("ZISK_NUMBER_THREADS_WITNESS")
                 .inherit_env("ZISK_MAX_WITNESS_STORED"),
+            // SP1Cluster connects to remote cluster - pass cluster config env vars
+            // Use host network so container can reach services on localhost (e.g. 127.0.0.1:50051)
+            Self::SP1Cluster => {
+                let mut cmd = cmd
+                    .network("host")
+                    .inherit_env("SP1_CLUSTER_ENDPOINT")
+                    .inherit_env("SP1_CLUSTER_API_KEY")
+                    .inherit_env("SP1_CLUSTER_REDIS_URL");
+                // Only inherit SP1_CLUSTER_NUM_GPUS if it's set and not empty
+                if let Ok(val) = std::env::var("SP1_CLUSTER_NUM_GPUS") {
+                    if !val.is_empty() {
+                        cmd = cmd.inherit_env("SP1_CLUSTER_NUM_GPUS");
+                    }
+                }
+                // Also pass config from resource if it's Cluster
+                if let ProverResourceType::Cluster(cluster_config) = resource {
+                    if !cluster_config.endpoint.is_empty() {
+                        cmd = cmd.env("SP1_CLUSTER_ENDPOINT", &cluster_config.endpoint);
+                    }
+                    if let Some(api_key) = &cluster_config.api_key {
+                        if !api_key.is_empty() {
+                            cmd = cmd.env("SP1_CLUSTER_API_KEY", api_key);
+                        }
+                    }
+                    if let Some(redis_url) = &cluster_config.redis_url {
+                        if !redis_url.is_empty() {
+                            cmd = cmd.env("SP1_CLUSTER_REDIS_URL", redis_url);
+                        }
+                    }
+                    if let Some(num_gpus) = cluster_config.num_gpus {
+                        cmd = cmd.env("SP1_CLUSTER_NUM_GPUS", num_gpus.to_string());
+                    }
+                }
+                cmd
+            },
             _ => cmd,
         };
 
@@ -352,6 +392,7 @@ impl FromStr for ErezkVM {
             "pico" => Self::Pico,
             "risc0" => Self::Risc0,
             "sp1" => Self::SP1,
+            "sp1-cluster" => Self::SP1Cluster,
             "ziren" => Self::Ziren,
             "zisk" => Self::Zisk,
             _ => return Err(format!("Unsupported zkvm {s}")),
@@ -411,6 +452,53 @@ impl Compiler for EreDockerizedCompiler {
             .inherit_env("ERE_RUST_TOOLCHAIN")
             .volume(&self.mount_directory, "/guest")
             .volume(tempdir.path(), "/output");
+
+        // Mount ere workspace for path dependencies (e.g., ere-io-serde)
+        // Try multiple possible locations for the ere workspace
+        let ere_workspace_paths = [
+            // Try relative to mount_directory: ../../ere
+            self.mount_directory.parent()
+                .and_then(|p| p.parent())
+                .map(|p| p.join("ere")),
+            // Try relative: ../ere  
+            self.mount_directory.parent().map(|p| p.join("ere")),
+            // Absolute fallback
+            Some(PathBuf::from("/root/sp1-cluster/ere")),
+        ];
+        
+        let mut ere_workspace: Option<PathBuf> = None;
+        for candidate_opt in &ere_workspace_paths {
+            if let Some(candidate) = candidate_opt {
+                if candidate.join("crates/io-serde/Cargo.toml").exists() {
+                    if let Ok(canonical) = candidate.canonicalize() {
+                        ere_workspace = Some(canonical);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if let Some(ere_path) = ere_workspace {
+            tracing::info!("Mounting ere workspace from: {} (mount_directory: {})", 
+                ere_path.display(), self.mount_directory.display());
+            // Mount crates directory to /ere/crates for path resolution (preserves /ere/bin/ere-compiler)
+            let crates_path = ere_path.join("crates");
+            let cargo_toml_path = ere_path.join("Cargo.toml");
+            if let (Ok(crates_canonical), Ok(cargo_toml_canonical)) = (
+                crates_path.canonicalize(),
+                cargo_toml_path.canonicalize()
+            ) {
+                cmd = cmd.volume(&crates_canonical, "/ere/crates");
+                cmd = cmd.volume(&cargo_toml_canonical, "/ere/Cargo.toml");
+            } else {
+                // Fallback to non-canonicalized paths if canonicalization fails
+                cmd = cmd.volume(&crates_path, "/ere/crates");
+                cmd = cmd.volume(&cargo_toml_path, "/ere/Cargo.toml");
+            }
+        } else {
+            tracing::warn!("Could not find ere workspace to mount. mount_directory: {}", 
+                self.mount_directory.display());
+        }
 
         cmd = match self.zkvm {
             // OpenVM allows to select Rust toolchain for guest compilation.
@@ -738,6 +826,14 @@ mod test {
             BasicProgramInput::valid(),
             [Vec::new(), BasicProgramInput::invalid().serialized_input()]
         );
+    }
+
+    // SP1 Cluster uses the same program format as SP1 but connects to a remote cluster
+    // Tests are ignored by default as they require SP1_CLUSTER_ENDPOINT to be set
+    mod sp1_cluster {
+        test_compile!(SP1Cluster, "basic");
+        // Execute and prove tests require a running SP1 Cluster
+        // Run with: SP1_CLUSTER_ENDPOINT=http://your-cluster:8080 cargo test sp1_cluster -- --ignored
     }
 
     mod ziren {

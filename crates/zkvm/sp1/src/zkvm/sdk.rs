@@ -24,6 +24,11 @@ impl Prover {
             ProverResourceType::Cpu => Self::Cpu(ProverClient::builder().cpu().build()),
             ProverResourceType::Gpu => Self::Gpu(ProverClient::builder().cuda().build()),
             ProverResourceType::Network(config) => Self::Network(build_network_prover(config)),
+            ProverResourceType::Cluster(_) => {
+                panic!(
+                    "Cluster proving is not supported by ere-sp1. Use ere-sp1-cluster instead."
+                );
+            }
         }
     }
 

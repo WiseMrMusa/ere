@@ -29,6 +29,7 @@ const _: () = {
                 + cfg!(feature = "pico") as u8
                 + cfg!(feature = "risc0") as u8
                 + cfg!(feature = "sp1") as u8
+                + cfg!(feature = "sp1-cluster") as u8
                 + cfg!(feature = "ziren") as u8
                 + cfg!(feature = "zisk") as u8)
                 == 1,
@@ -109,7 +110,8 @@ async fn shutdown_signal() {
 }
 
 fn construct_zkvm(program: Vec<u8>, resource: ProverResourceType) -> Result<impl zkVM, Error> {
-    let (program, _) = bincode::serde::decode_from_slice(&program, bincode::config::legacy())
+    // Use bincode 1.x to match sp1-cluster's serialization format
+    let program: Vec<u8> = bincode1::deserialize(&program)
         .with_context(|| "Failed to deserialize program")?;
 
     #[cfg(feature = "airbender")]
@@ -135,6 +137,22 @@ fn construct_zkvm(program: Vec<u8>, resource: ProverResourceType) -> Result<impl
 
     #[cfg(feature = "sp1")]
     let zkvm = ere_sp1::zkvm::EreSP1::new(program, resource);
+
+    #[cfg(feature = "sp1-cluster")]
+    let zkvm = {
+        // For SP1 Cluster, the resource should be Cluster, but we also accept CPU/GPU
+        // and convert to a ClusterProverConfig
+        let cluster_config = match resource {
+            ProverResourceType::Cluster(config) => config,
+            _ => {
+                // Use environment variables for cluster config
+                ere_zkvm_interface::zkvm::ClusterProverConfig::default()
+            }
+        };
+        // Wrap Vec<u8> in SP1Program
+        let program = ere_sp1_cluster::program::SP1Program::from(program);
+        ere_sp1_cluster::zkvm::EreSP1Cluster::new(program, cluster_config)
+    };
 
     #[cfg(feature = "ziren")]
     let zkvm = ere_ziren::zkvm::EreZiren::new(program, resource);

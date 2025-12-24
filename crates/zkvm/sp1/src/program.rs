@@ -11,3 +11,9 @@ impl SP1Program {
         &self.elf
     }
 }
+
+impl From<Vec<u8>> for SP1Program {
+    fn from(elf: Vec<u8>) -> Self {
+        Self { elf }
+    }
+}
