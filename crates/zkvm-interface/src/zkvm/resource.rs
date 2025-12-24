@@ -15,7 +15,7 @@ pub struct NetworkProverConfig {
 }
 
 /// Configuration for cluster-based proving (e.g., SP1 Cluster)
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClusterProverConfig {
     #[cfg_attr(feature = "clap", arg(long, env = "SP1_CLUSTER_ENDPOINT", default_value = ""))]
