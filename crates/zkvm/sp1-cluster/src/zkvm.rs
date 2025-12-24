@@ -2,7 +2,7 @@ use crate::program::SP1Program;
 use anyhow::bail;
 use bincode1;
 use ere_zkvm_interface::zkvm::{
-    ClusterProverConfig, CommonError, ProgramExecutionReport, ProgramProvingReport, Proof,
+    ClusterProverConfig, CommonError, Input, ProgramExecutionReport, ProgramProvingReport, Proof,
     ProofKind, PublicValues, zkVM, zkVMProgramDigest,
 };
 use sp1_sdk::{
@@ -119,12 +119,12 @@ impl EreSP1Cluster {
 }
 
 impl zkVM for EreSP1Cluster {
-    fn execute(&self, input: &[u8]) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
+    fn execute(&self, input: &Input) -> anyhow::Result<(PublicValues, ProgramExecutionReport)> {
         info!("Executing program locally (cluster is for proving only)...");
 
         // Execute locally using SP1 SDK
         let mut stdin = SP1Stdin::new();
-        stdin.write_slice(input);
+        stdin.write_slice(input.stdin());
 
         let start = std::time::Instant::now();
         let (public_values, exec_report) = self
@@ -145,7 +145,7 @@ impl zkVM for EreSP1Cluster {
 
     fn prove(
         &self,
-        input: &[u8],
+        input: &Input,
         proof_kind: ProofKind,
     ) -> anyhow::Result<(PublicValues, Proof, ProgramProvingReport)> {
         info!(
@@ -163,7 +163,7 @@ impl zkVM for EreSP1Cluster {
 
         // Serialize stdin in SP1 format using bincode 1.x (must match sp1-cluster's bincode version)
         let mut stdin = SP1Stdin::new();
-        stdin.write_slice(input);
+        stdin.write_slice(input.stdin());
         let stdin_bytes = bincode1::serialize(&stdin)
             .map_err(|e| CommonError::serialize("stdin", "bincode1", e))?;
 
@@ -320,8 +320,12 @@ mod tests {
         let zkvm = EreSP1Cluster::new(program, config).unwrap();
 
         let test_case = BasicProgramInput::valid();
+        let input = Input {
+            stdin: test_case.serialized_input(),
+            proofs: None,
+        };
         let (public_values, proof, report) = zkvm
-            .prove(&test_case.serialized_input(), ProofKind::Compressed)
+            .prove(&input, ProofKind::Compressed)
             .unwrap();
 
         assert!(!public_values.is_empty());
